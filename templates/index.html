@@ -2,401 +2,206 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Agent Workspace</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    :root {
-      --bg: #0d1117;
-      --card: #161b22;
-      --border: #30363d;
-      --text: #c9d1d9;
-      --accent: #238636;
-      --accent-hover: #2ea043;
-      --btn-blue: #1f6feb;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
-      height: 100%;
-      height: 100dvh;
-      overflow: hidden;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-    #app-container {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      height: 100dvh;
-      position: relative;
-    }
-    header {
-      background: var(--card);
-      border-bottom: 1px solid var(--border);
-      padding: 12px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-shrink: 0;
-    }
-    header h1 { font-size: 1rem; color: #fff; font-weight: 600; }
-    #status-badge { font-size: 0.8rem; color: #8b949e; font-weight: 500; }
-    nav {
-      display: flex;
-      background: var(--card);
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-    nav button {
-      flex: 1;
-      padding: 10px 4px;
-      background: transparent;
-      border: none;
-      border-bottom: 2px solid transparent;
-      color: var(--text);
-      font-size: 0.9rem;
-      cursor: pointer;
-    }
-    nav button.active {
-      border-bottom-color: var(--btn-blue);
-      color: #fff;
-      font-weight: 600;
-    }
-    .tab-content {
-      flex: 1;
-      display: none;
-      flex-direction: column;
-      min-height: 0;
-      position: relative;
-    }
-    .tab-content.active { display: flex; }
-    #chat-log {
-      flex: 1;
-      padding: 14px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      min-height: 0;
-    }
-    .msg {
-      padding: 10px 14px;
-      border-radius: 8px;
-      max-width: 88%;
-      font-size: 0.9rem;
-      line-height: 1.45;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    .msg.user {
-      align-self: flex-end;
-      background: var(--btn-blue);
-      color: #fff;
-    }
-    .msg.agent {
-      align-self: flex-start;
-      background: var(--card);
-      border: 1px solid var(--border);
-    }
-    .chat-bar {
-      display: flex;
-      padding: 10px;
-      background: var(--card);
-      border-top: 1px solid var(--border);
-      gap: 8px;
-      flex-shrink: 0;
-    }
-    .chat-bar input {
-      flex: 1;
-      padding: 10px 14px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--bg);
-      color: #fff;
-      font-size: 0.95rem;
-      outline: none;
-    }
-    .chat-bar button {
-      padding: 10px 18px;
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 0.9rem;
-    }
-    .chat-bar button:disabled { opacity: 0.5; }
-    #preview-frame {
-      width: 100%;
-      flex: 1;
-      border: none;
-      background: #fff;
-    }
-    .toolbar {
-      padding: 8px 12px;
-      background: var(--card);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-shrink: 0;
-    }
-    .toolbar select {
-      flex: 1;
-      padding: 6px 10px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: #fff;
-      border-radius: 4px;
-      font-size: 0.85rem;
-    }
-    .toolbar button {
-      padding: 6px 12px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: #fff;
-      border-radius: 4px;
-      font-size: 0.85rem;
-      cursor: pointer;
-    }
-    .btn-green {
-      background: var(--accent) !important;
-      border: none !important;
-    }
-    #code-viewer {
-      flex: 1;
-      padding: 12px;
-      background: var(--bg);
-      color: #e6edf3;
-      overflow: auto;
-      font-family: monospace;
-      font-size: 0.85rem;
-      white-space: pre;
-    }
-    #file-list {
-      flex: 1;
-      padding: 8px;
-      list-style: none;
-      overflow-y: auto;
-    }
-    .file-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
-      font-family: monospace;
-      font-size: 0.88rem;
-    }
-    .file-name {
-      cursor: pointer;
-      color: var(--text);
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .file-name:hover { color: #58a6ff; }
-    .file-actions {
-      display: flex;
-      gap: 6px;
-    }
-    .file-actions a {
-      padding: 4px 8px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      color: var(--text);
-      text-decoration: none;
-      font-size: 0.75rem;
-    }
+    body { background-color: #0d1117; color: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .active-tab { border-bottom: 2px solid #58a6ff; color: #58a6ff; }
   </style>
 </head>
-<body>
-  <div id="app-container">
-    <header>
-      <h1>Agent Workspace</h1>
-      <span id="status-badge">Idle</span>
-    </header>
-    <nav>
-      <button class="active" onclick="switchTab('chat')">Chat</button>
-      <button onclick="switchTab('preview')">Preview</button>
-      <button onclick="switchTab('code')">Code</button>
-      <button onclick="switchTab('files')">Files</button>
-    </nav>
-
-    <div id="tab-chat" class="tab-content active">
-      <div id="chat-log">
-        <div class="msg agent">Hello! Describe any web app or landing page, and I'll generate the full multi-file project with taste-skill styling applied.</div>
-      </div>
-      <form class="chat-bar" onsubmit="sendPrompt(event)">
-        <input type="text" id="prompt-input" placeholder="e.g. Minimalist portfolio..." autocomplete="off">
-        <button type="submit" id="send-btn">Build</button>
-      </form>
+<body class="h-screen flex flex-col overflow-hidden">
+  <header class="h-14 border-b border-gray-800 flex items-center justify-between px-4 bg-[#161b22]">
+    <div class="flex items-center space-x-2 font-semibold text-white">
+      <i data-lucide="bot" class="w-5 h-5 text-blue-400"></i>
+      <span>Agent Workspace</span>
     </div>
+    <div id="statusBadge" class="text-xs px-2.5 py-1 rounded-full bg-gray-800 text-gray-400 border border-gray-700">Idle</div>
+  </header>
 
-    <div id="tab-preview" class="tab-content">
-      <div class="toolbar">
-        <button onclick="reloadPreview()">↻ Refresh</button>
-      </div>
-      <iframe id="preview-frame" src="/preview/"></iframe>
-    </div>
+  <nav class="flex border-b border-gray-800 bg-[#0d1117] text-sm text-gray-400">
+    <button onclick="switchTab('chat')" id="tab-chat" class="flex-1 py-3 text-center active-tab">Chat</button>
+    <button onclick="switchTab('preview')" id="tab-preview" class="flex-1 py-3 text-center">Preview</button>
+    <button onclick="switchTab('files')" id="tab-files" class="flex-1 py-3 text-center">Files</button>
+  </nav>
 
-    <div id="tab-code" class="tab-content">
-      <div class="toolbar">
-        <select id="code-file-select" onchange="loadFileContent(this.value)">
-          <option value="">Select a file...</option>
-        </select>
-        <button id="copy-btn" onclick="copyCurrentCode()">Copy</button>
-        <button id="download-current-btn" onclick="downloadCurrentFile()">Download</button>
+  <main class="flex-1 overflow-hidden relative">
+    <!-- Chat View -->
+    <section id="view-chat" class="h-full flex flex-col">
+      <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-4">
+        <div class="bg-[#161b22] border border-gray-800 p-3 rounded-lg text-sm">
+          Welcome! What would you like to build or update?
+        </div>
       </div>
-      <pre id="code-viewer">// Select a file to inspect its code</pre>
-    </div>
 
-    <div id="tab-files" class="tab-content">
-      <div class="toolbar">
-        <button onclick="refreshFilesList()">↻ Refresh</button>
-        <a href="/download/zip" class="toolbar-link"><button class="btn-green">Download ZIP</button></a>
+      <!-- Asset Upload Slot Container -->
+      <div id="assetSlotsContainer" class="hidden p-3 bg-[#161b22] border-t border-b border-amber-500/30 space-y-2">
+        <div class="flex items-center space-x-2 text-xs font-semibold text-amber-400">
+          <i data-lucide="image-plus" class="w-4 h-4"></i>
+          <span>Images Required for Accurate Preview</span>
+        </div>
+        <div id="slotsList" class="space-y-2"></div>
       </div>
-      <ul id="file-list"></ul>
-    </div>
-  </div>
+
+      <div class="p-3 border-t border-gray-800 bg-[#161b22] flex space-x-2">
+        <input id="promptInput" type="text" placeholder="Describe feature, app, or modification..." class="flex-1 bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+        <button id="sendBtn" onclick="submitPrompt()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-1">
+          <span>Send</span>
+          <i data-lucide="send" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </section>
+
+    <!-- Preview View -->
+    <section id="view-preview" class="h-full hidden flex-col">
+      <div class="p-2 border-b border-gray-800 bg-[#161b22] flex justify-end">
+        <button onclick="reloadPreview()" class="text-xs text-gray-300 border border-gray-700 hover:border-gray-500 px-3 py-1 rounded flex items-center space-x-1">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+          <span>Refresh</span>
+        </button>
+      </div>
+      <iframe id="previewFrame" src="/preview/index.html" class="w-full flex-1 border-none bg-white"></iframe>
+    </section>
+
+    <!-- Files View -->
+    <section id="view-files" class="h-full hidden p-4 overflow-y-auto">
+      <h3 class="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-2">Workspace Files</h3>
+      <ul id="filesList" class="space-y-1 text-sm font-mono"></ul>
+    </section>
+  </main>
 
   <script>
-    let activeFilePath = "";
+    lucide.createIcons();
 
-    function switchTab(tabId) {
-      document.querySelectorAll('nav button').forEach((btn, idx) => {
-        const tabs = ['chat', 'preview', 'code', 'files'];
-        btn.classList.toggle('active', tabs[idx] === tabId);
+    function switchTab(tab) {
+      ['chat', 'preview', 'files'].forEach(t => {
+        document.getElementById(`view-${t}`).classList.add('hidden');
+        document.getElementById(`tab-${t}`).classList.remove('active-tab');
       });
-      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-      document.getElementById('tab-' + tabId).classList.add('active');
+      document.getElementById(`view-${tab}`).classList.remove('hidden');
+      document.getElementById(`tab-${tab}`).classList.add('active-tab');
 
-      if (tabId === 'preview') reloadPreview();
-      if (tabId === 'files' || tabId === 'code') refreshFilesList();
+      if (tab === 'preview') reloadPreview();
+      if (tab === 'files') loadFiles();
     }
 
     function reloadPreview() {
-      const iframe = document.getElementById('preview-frame');
-      iframe.src = '/preview/?t=' + new Date().getTime();
+      const frame = document.getElementById('previewFrame');
+      frame.src = '/preview/index.html?t=' + Date.now();
     }
 
-    async function sendPrompt(e) {
-      e.preventDefault();
-      const input = document.getElementById('prompt-input');
-      const text = input.value.trim();
-      if (!text) return;
-
-      appendMsg('user', text);
-      input.value = '';
-      setLoading(true);
-
-      try {
-        const res = await fetch('/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: text })
-        });
-        const data = await res.json();
-        if (data.error) {
-          appendMsg('agent', 'Error: ' + data.error);
-        } else {
-          appendMsg('agent', 'Build complete! Created files:\n' + data.files.map(f => ' - ' + f).join('\n'));
-          reloadPreview();
-          refreshFilesList();
-        }
-      } catch (err) {
-        appendMsg('agent', 'Request error: ' + err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    function appendMsg(sender, msg) {
-      const log = document.getElementById('chat-log');
-      const div = document.createElement('div');
-      div.className = 'msg ' + sender;
-      div.innerText = msg;
-      log.appendChild(div);
-      log.scrollTop = log.scrollHeight;
-    }
-
-    function setLoading(isLoading) {
-      const badge = document.getElementById('status-badge');
-      const btn = document.getElementById('send-btn');
-      if (isLoading) {
-        badge.innerText = 'Generating...';
-        badge.style.color = '#e3b341';
-        btn.disabled = true;
-      } else {
-        badge.innerText = 'Idle';
-        badge.style.color = '#8b949e';
-        btn.disabled = false;
-      }
-    }
-
-    async function refreshFilesList() {
+    async function loadFiles() {
       const res = await fetch('/api/files');
       const data = await res.json();
-      const listEl = document.getElementById('file-list');
-      const selectEl = document.getElementById('code-file-select');
-      listEl.innerHTML = '';
-      selectEl.innerHTML = '<option value="">Select a file...</option>';
-
-      data.files.forEach(file => {
+      const list = document.getElementById('filesList');
+      list.innerHTML = '';
+      (data.files || []).forEach(f => {
         const li = document.createElement('li');
-        li.className = 'file-row';
-
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'file-name';
-        nameSpan.innerText = file;
-        nameSpan.onclick = () => { switchTab('code'); loadFileContent(file); };
-
-        const actions = document.createElement('div');
-        actions.className = 'file-actions';
-
-        const dlLink = document.createElement('a');
-        dlLink.href = '/download/file?path=' + encodeURIComponent(file);
-        dlLink.innerText = 'Download';
-
-        actions.appendChild(dlLink);
-        li.appendChild(nameSpan);
-        li.appendChild(actions);
-        listEl.appendChild(li);
-
-        const opt = document.createElement('option');
-        opt.value = file;
-        opt.innerText = file;
-        if (file === activeFilePath) opt.selected = true;
-        selectEl.appendChild(opt);
+        li.className = 'py-1 px-2 hover:bg-gray-800 rounded text-gray-300';
+        li.textContent = f;
+        list.appendChild(li);
       });
     }
 
-    async function loadFileContent(file) {
-      if (!file) return;
-      activeFilePath = file;
-      document.getElementById('code-file-select').value = file;
-      const res = await fetch('/api/file-content?path=' + encodeURIComponent(file));
-      const data = await res.json();
-      document.getElementById('code-viewer').innerText = data.content || data.error;
+    async function submitPrompt() {
+      const input = document.getElementById('promptInput');
+      const prompt = input.value.trim();
+      if (!prompt) return;
+
+      input.value = '';
+      appendMessage('user', prompt);
+      setStatus('Generating...', 'bg-amber-900/60 text-amber-300 border-amber-600');
+
+      try {
+        const res = await fetch('/api/build', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt })
+        });
+        const data = await res.json();
+
+        if (data.error) {
+          appendMessage('agent', 'Error: ' + data.error);
+        } else {
+          appendMessage('agent', `Generated/Updated ${data.files.length} file(s).`);
+          if (data.asset_requests && data.asset_requests.length > 0) {
+            renderAssetRequests(data.asset_requests);
+          } else {
+            document.getElementById('assetSlotsContainer').classList.add('hidden');
+          }
+          reloadPreview();
+        }
+      } catch (err) {
+        appendMessage('agent', 'Request failed: ' + err.message);
+      } finally {
+        setStatus('Idle', 'bg-gray-800 text-gray-400 border-gray-700');
+      }
     }
 
-    function copyCurrentCode() {
-      const code = document.getElementById('code-viewer').innerText;
-      if (!code || code.startsWith('// Select a file')) return;
-      navigator.clipboard.writeText(code).then(() => {
-        const btn = document.getElementById('copy-btn');
-        const oldText = btn.innerText;
-        btn.innerText = 'Copied!';
-        setTimeout(() => btn.innerText = oldText, 1500);
+    function renderAssetRequests(requests) {
+      const container = document.getElementById('assetSlotsContainer');
+      const list = document.getElementById('slotsList');
+      list.innerHTML = '';
+
+      requests.forEach(req => {
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between bg-[#0d1117] p-2 rounded border border-gray-700 text-xs';
+        div.innerHTML = `
+          <div>
+            <div class="font-medium text-white">${req.label || req.slot}</div>
+            <div class="text-gray-400">${req.description || ''}</div>
+          </div>
+          <label class="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded text-xs font-semibold">
+            Upload
+            <input type="file" accept="image/*" class="hidden" onchange="uploadSlotImage('${req.slot}', this)">
+          </label>
+        `;
+        list.appendChild(div);
       });
+      container.classList.remove('hidden');
+      lucide.createIcons();
     }
 
-    function downloadCurrentFile() {
-      if (!activeFilePath) return;
-      window.location.href = '/download/file?path=' + encodeURIComponent(activeFilePath);
+    async function uploadSlotImage(slot, inputElement) {
+      if (!inputElement.files || !inputElement.files[0]) return;
+      const file = inputElement.files[0];
+      const formData = new FormData();
+      formData.append('slot', slot);
+      formData.append('file', file);
+
+      setStatus(`Uploading ${slot}...`, 'bg-blue-900/60 text-blue-300 border-blue-600');
+      try {
+        const res = await fetch('/api/upload-asset', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.status === 'success') {
+          appendMessage('agent', `Uploaded image for slot: <strong>${slot}</strong>`);
+          reloadPreview();
+        } else {
+          alert('Upload failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (e) {
+        alert('Upload error: ' + e.message);
+      } finally {
+        setStatus('Idle', 'bg-gray-800 text-gray-400 border-gray-700');
+      }
+    }
+
+    function appendMessage(sender, text) {
+      const msgs = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = sender === 'user'
+        ? 'bg-blue-950/40 border border-blue-800/60 p-3 rounded-lg text-sm text-blue-100 ml-6'
+        : 'bg-[#161b22] border border-gray-800 p-3 rounded-lg text-sm mr-6';
+      div.innerHTML = text;
+      msgs.appendChild(div);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function setStatus(text, classes) {
+      const badge = document.getElementById('statusBadge');
+      badge.textContent = text;
+      badge.className = `text-xs px-2.5 py-1 rounded-full border ${classes}`;
     }
   </script>
 </body>

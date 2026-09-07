@@ -1,3 +1,5 @@
+import os
+import re
 from gemini_manager import GeminiManager
 from project_parser import extract_and_write_files
 from skills_loader import get_design_system_instruction
@@ -20,32 +22,90 @@ class CodingAgent:
             "- If icons are needed, use Lucide icons CDN: <script src=\"[https://unpkg.com/lucide@latest](https://unpkg.com/lucide@latest)\"></script>\n"
             "- If 3D is needed, use Three.js CDN: <script src=\"[https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js](https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js)\"></script>\n"
             "- Always ensure index.html links correctly to your CSS and JS files using relative paths.\n"
-            "- Always provide complete, non-truncated production-ready code.\n\n"
-            "--- STRICT RULE: ZERO STOCK PHOTOS / NO UNVERIFIED IMAGES ---\n"
-            "- ABSOLUTELY NEVER use external placeholder image services (NO unsplash.com, NO picsum.photos, NO placeholder.com, NO via.placeholder).\n"
-            "  External placeholder images always produce completely irrelevant random photos (such as nature, furniture, or dresses in a gaming portfolio) which looks unprofessional and broken.\n"
-            "- INSTEAD, DESIGN EVERY VISUAL COMPONENT PROCEDURALLY:\n"
-            "  1. Weapon Displays: Build sleek tactical blueprint containers with Lucide icons (crosshair, zap, shield, target), animated neon stat bars, caliber labels, and glowing cyber grid lines.\n"
-            "  2. Player Profile / Badges: Render custom esports avatars using SVG geometric shields, glowing radial gradients with initials, or dynamic badge crests.\n"
-            "  3. Match & Video Highlights: Design rich, atmospheric dark cards with linear/radial backdrop gradients, tactical HUD borders, duration timestamps, and styled SVG play buttons.\n"
-            "  4. Fallback: If any graphical illustration is required, draw it using inline SVG with clean viewBox coordinates.\n\n"
-            "Output all files using this exact block format:\n\n"
-            f"{bt}<language> file=<relative_path>\n<file_contents>\n{bt}\n\n"
-            "Example format:\n"
-            f"{bt}html file=index.html\n<!DOCTYPE html>\n...{bt}\n"
-            f"{bt}css file=css/style.css\n...{bt}\n"
-            f"{bt}js file=js/app.js\n...{bt}\n"
+            "- Always provide complete, non-truncated production-ready code for all files.\n\n"
+            "--- STRICT ASSET & IMAGE POLICY ---\n"
+            "- NEVER use random external stock photo URLs (NO unsplash, NO picsum, NO placeholder.com).\n"
+            "- If a UI element works well as a procedural component (stat bars, game cards, glowing buttons, HUD elements), build it using inline SVG, Lucide icons, and CSS gradients.\n"
+            "- IF REAL USER IMAGES ARE REQUIRED (e.g. personal avatar, actual game clips/screenshots, real product photos):\n"
+            "  1. In your HTML code, reference the local assets path: `assets/<slot_name>.png`\n"
+            "  2. Add an attribute `data-asset-slot=\"<slot_name>\"` to the `<img>` tag.\n"
+            "  3. Provide a fallback procedural CSS style or inline SVG placeholder inside the image container.\n"
+            "  4. Declare the required images in this exact block at the very end of your response:\n\n"
+            f"{bt}asset-requests\n"
+            "- slot: <slot_name>\n"
+            "  label: <Short Label User-Friendly>\n"
+            "  description: <What image represents this>\n"
+            f"{bt}\n\n"
+            "Output all project files using this standard block format:\n\n"
+            f"{bt}<language> file=<relative_path>\n<file_contents>\n{bt}\n"
         )
         return f"{taste_rules}\n\n{multi_file_spec}"
 
+    def _read_existing_workspace(self):
+        existing_files = {}
+        if not os.path.exists(self.workspace_dir):
+            return existing_files
+
+        for root, _, files in os.walk(self.workspace_dir):
+            for file in files:
+                rel_path = os.path.relpath(os.path.join(root, file), self.workspace_dir)
+                # Skip binary assets from being dumped into prompt text
+                if rel_path.startswith("assets/"):
+                    continue
+                full_path = os.path.join(root, file)
+                try:
+                    with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
+                        existing_files[rel_path] = f.read()
+                except Exception:
+                    pass
+        return existing_files
+
+    def _extract_asset_requests(self, response_text):
+        pattern = r"```asset-requests\s*(.*?)\s*```"
+        match = re.search(pattern, response_text, re.DOTALL)
+        requests = []
+        if match:
+            raw = match.group(1).strip()
+            current = {}
+            for line in raw.split("\n"):
+                line = line.strip()
+                if line.startswith("- slot:"):
+                    if current and "slot" in current:
+                        requests.append(current)
+                    current = {"slot": line.replace("- slot:", "").strip()}
+                elif line.startswith("label:"):
+                    current["label"] = line.replace("label:", "").strip()
+                elif line.startswith("description:"):
+                    current["description"] = line.replace("description:", "").strip()
+            if current and "slot" in current:
+                requests.append(current)
+        return requests
+
     def build_project(self, prompt):
-        print(f"[CodingAgent] Generating browser-ready project for: {prompt}")
+        existing_files = self._read_existing_workspace()
+
+        if existing_files:
+            bt = "```"
+            files_context = "\n\n".join(
+                [f"File: `{p}`\n{bt}\n{c}\n{bt}" for p, c in existing_files.items()]
+            )
+            full_prompt = (
+                f"### CURRENT WORKSPACE FILES:\n{files_context}\n\n"
+                f"### USER REQUEST:\n{prompt}\n\n"
+                "Apply the modifications requested by the user. If real user images are needed, list them in ```asset-requests```."
+            )
+        else:
+            full_prompt = prompt
+
         response_text = self.manager.generate_content(
-            prompt=prompt,
+            prompt=full_prompt,
             system_instruction=self.system_instruction
         )
         written_files = extract_and_write_files(response_text, output_dir=self.workspace_dir)
+        asset_requests = self._extract_asset_requests(response_text)
+
         return {
             "response": response_text,
-            "files": written_files
+            "files": written_files,
+            "asset_requests": asset_requests
         }

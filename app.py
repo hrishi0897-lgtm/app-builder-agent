@@ -1,12 +1,11 @@
 import os
-import io
-import zipfile
-from flask import Flask, render_template, request, jsonify, send_from_directory, send_file
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from agent_core import CodingAgent
 
 app = Flask(__name__)
-WORKSPACE_DIR = os.path.abspath("workspace")
+WORKSPACE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "workspace")
 os.makedirs(WORKSPACE_DIR, exist_ok=True)
+os.makedirs(os.path.join(WORKSPACE_DIR, "assets"), exist_ok=True)
 
 agent = CodingAgent(workspace_dir=WORKSPACE_DIR)
 
@@ -14,8 +13,8 @@ agent = CodingAgent(workspace_dir=WORKSPACE_DIR)
 def index():
     return render_template("index.html")
 
-@app.route("/generate", methods=["POST"])
-def generate():
+@app.route("/api/build", methods=["POST"])
+def build():
     data = request.get_json() or {}
     prompt = data.get("prompt", "").strip()
     if not prompt:
@@ -26,63 +25,52 @@ def generate():
         return jsonify({
             "status": "success",
             "files": result["files"],
-            "raw_response": result["response"]
+            "asset_requests": result["asset_requests"]
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/preview/")
+@app.route("/api/upload-asset", methods=["POST"])
+def upload_asset():
+    slot = request.form.get("slot", "").strip()
+    file = request.files.get("file")
+
+    if not slot or not file:
+        return jsonify({"error": "Missing slot identifier or file"}), 400
+
+    assets_dir = os.path.join(WORKSPACE_DIR, "assets")
+    os.makedirs(assets_dir, exist_ok=True)
+
+    # Save filename matching the slot name so relative assets/<slot>.png paths work
+    target_path = os.path.join(assets_dir, f"{slot}.png")
+    file.save(target_path)
+
+    return jsonify({"status": "success", "slot": slot, "path": f"assets/{slot}.png"})
+
 @app.route("/preview/<path:filename>")
-def preview_file(filename="index.html"):
-    file_path = os.path.join(WORKSPACE_DIR, filename)
-    if os.path.exists(file_path):
-        return send_from_directory(WORKSPACE_DIR, filename)
-    return "<h3>Workspace is empty or file not found. Generate a project first.</h3>", 404
+def serve_preview(filename):
+    return send_from_directory(WORKSPACE_DIR, filename)
 
 @app.route("/api/files", methods=["GET"])
-def list_files():
-    file_list = []
+def get_files():
+    file_tree = []
     for root, _, files in os.walk(WORKSPACE_DIR):
-        for f in files:
-            full_p = os.path.join(root, f)
-            rel_p = os.path.relpath(full_p, WORKSPACE_DIR)
-            file_list.append(rel_p)
-    return jsonify({"files": sorted(file_list)})
+        for file in files:
+            rel = os.path.relpath(os.path.join(root, file), WORKSPACE_DIR)
+            file_tree.append(rel)
+    return jsonify({"files": file_tree})
 
 @app.route("/api/file-content", methods=["GET"])
 def get_file_content():
-    rel_path = request.args.get("path", "").strip()
-    full_path = os.path.join(WORKSPACE_DIR, rel_path)
-    if not os.path.commonpath([WORKSPACE_DIR, full_path]) == WORKSPACE_DIR:
-        return jsonify({"error": "Access denied"}), 403
-    if not os.path.exists(full_path):
-        return jsonify({"error": "File not found"}), 404
-    try:
-        with open(full_path, "r", encoding="utf-8") as f:
-            content = f.read()
-        return jsonify({"content": content, "path": rel_path})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/download/file")
-def download_file():
-    rel_path = request.args.get("path", "").strip()
-    full_path = os.path.join(WORKSPACE_DIR, rel_path)
-    if not os.path.commonpath([WORKSPACE_DIR, full_path]) == WORKSPACE_DIR or not os.path.exists(full_path):
-        return "File not found", 404
-    return send_file(full_path, as_attachment=True)
-
-@app.route("/download/zip")
-def download_zip():
-    mem_file = io.BytesIO()
-    with zipfile.ZipFile(mem_file, "w", zipfile.ZIP_DEFLATED) as zf:
-        for root, _, files in os.walk(WORKSPACE_DIR):
-            for f in files:
-                abs_path = os.path.join(root, f)
-                rel_path = os.path.relpath(abs_path, WORKSPACE_DIR)
-                zf.write(abs_path, rel_path)
-    mem_file.seek(0)
-    return send_file(mem_file, mimetype="application/zip", as_attachment=True, download_name="project.zip")
+    path = request.args.get("path")
+    if not path:
+        return jsonify({"error": "Path required"}), 400
+    safe_path = os.path.normpath(os.path.join(WORKSPACE_DIR, path))
+    if not safe_path.startswith(WORKSPACE_DIR) or not os.path.isfile(safe_path):
+        return jsonify({"error": "Invalid file path"}), 403
+    with open(safe_path, "r", encoding="utf-8", errors="ignore") as f:
+        return jsonify({"content": f.read()})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
