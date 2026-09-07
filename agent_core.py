@@ -1,6 +1,6 @@
 from gemini_manager import GeminiManager
 from project_parser import extract_and_write_files
-from skills_loader import load_taste_rules
+from skills_loader import get_design_system_instruction
 
 class CodingAgent:
     def __init__(self, workspace_dir="workspace"):
@@ -9,7 +9,7 @@ class CodingAgent:
         self.system_instruction = self._build_system_instruction()
 
     def _build_system_instruction(self):
-        taste_rules = load_taste_rules()
+        taste_rules = get_design_system_instruction()
         bt = "```"
         multi_file_spec = (
             "\n--- BROWSER RUNTIME & MULTI-FILE CODE FORMAT RULES ---\n"
