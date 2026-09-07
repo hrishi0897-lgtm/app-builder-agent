@@ -5,8 +5,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class GeminiManager:
-    def __init__(self, model="gemini-2.5-flash"):
-        self.model = model
+    def __init__(self, model=None):
+        # Read from environment or fallback to gemini-2.5-flash
+        self.model = model or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
         self.api_keys = self._load_keys()
         self.current_index = 0
 
@@ -72,9 +73,8 @@ class GeminiManager:
             ]
         }
 
-        # Google Search Grounding for live web research
         if enable_search:
-            payload["tools"] = [{"googleSearch": {}}]
+            payload["tools"] = [{"google_search": {}}]
 
         if system_instruction:
             payload["systemInstruction"] = {
