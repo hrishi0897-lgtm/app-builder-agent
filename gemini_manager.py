@@ -6,13 +6,13 @@ load_dotenv()
 
 class GeminiManager:
     def __init__(self, model=None):
-        # Explicitly set to gemini-3.6-flash
-        self.model = model or os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+        # Explicitly configure gemini-3.8-flash
+        self.model = model or os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
         self.api_keys = self._load_keys()
         self.current_index = 0
 
         if not self.api_keys:
-            raise ValueError("No Gemini API keys found in .env")
+            raise ValueError("No Gemini API keys found in .env / Render Environment")
 
     def _load_keys(self):
         keys = []
@@ -40,6 +40,7 @@ class GeminiManager:
         headers = {"Content-Type": "application/json"}
         attempts = 0
         total_keys = len(self.api_keys)
+        last_error = "Unknown error"
 
         while attempts < total_keys:
             url = f"{url_template}?key={self.current_key}"
@@ -53,18 +54,18 @@ class GeminiManager:
                         text_parts = [p.get("text", "") for p in parts if "text" in p]
                         return "".join(text_parts)
                     return ""
-                elif response.status_code in (400, 429, 503):
-                    print(f"[GeminiManager] Key {self.current_index + 1} failed with HTTP {response.status_code}. Skipping to next key...")
+                else:
+                    last_error = f"HTTP {response.status_code} on key {self.current_index + 1}: {response.text}"
+                    print(f"[GeminiManager] {last_error}")
                     self._rotate_key()
                     attempts += 1
-                else:
-                    raise RuntimeError(f"Gemini API error {response.status_code}: {response.text}")
             except requests.RequestException as e:
-                print(f"[GeminiManager] Network error on key {self.current_index + 1}: {e}. Rotating...")
+                last_error = f"RequestException on key {self.current_index + 1}: {e}"
+                print(f"[GeminiManager] {last_error}")
                 self._rotate_key()
                 attempts += 1
 
-        raise RuntimeError("All Gemini API keys exhausted or rate-limited.")
+        raise RuntimeError(f"All {total_keys} keys failed. Last error details: {last_error}")
 
     def generate_content(self, prompt, system_instruction=None, enable_search=True, timeout=120):
         payload = {
@@ -74,7 +75,7 @@ class GeminiManager:
         }
 
         if enable_search:
-            payload["tools"] = [{"google_search": {}}]
+            payload["tools"] = [{"googleSearch": {}}]
 
         if system_instruction:
             payload["systemInstruction"] = {
