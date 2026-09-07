@@ -6,8 +6,8 @@ load_dotenv()
 
 class GeminiManager:
     def __init__(self, model=None):
-        # Read from environment or fallback to gemini-2.5-flash
-        self.model = model or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        # Default to gemini-3.6-flash
+        self.model = model or os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
         self.api_keys = self._load_keys()
         self.current_index = 0
 
@@ -35,7 +35,7 @@ class GeminiManager:
         self.current_index = (self.current_index + 1) % len(self.api_keys)
         print(f"[GeminiManager] Rotated key from index {old_idx + 1} to {self.current_index + 1}")
 
-    def _post(self, payload, timeout=90):
+    def _post(self, payload, timeout=120):
         url_template = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
         headers = {"Content-Type": "application/json"}
         attempts = 0
@@ -66,7 +66,7 @@ class GeminiManager:
 
         raise RuntimeError("All Gemini API keys exhausted or rate-limited.")
 
-    def generate_content(self, prompt, system_instruction=None, enable_search=True, timeout=90):
+    def generate_content(self, prompt, system_instruction=None, enable_search=True, timeout=120):
         payload = {
             "contents": [
                 {"parts": [{"text": prompt}]}
@@ -83,7 +83,7 @@ class GeminiManager:
 
         return self._post(payload, timeout=timeout)
 
-    def generate_with_image(self, prompt, image_bytes, mime_type="image/jpeg", system_instruction=None, timeout=90):
+    def generate_with_image(self, prompt, image_bytes, mime_type="image/jpeg", system_instruction=None, timeout=120):
         import base64
         encoded_image = base64.b64encode(image_bytes).decode("utf-8")
         payload = {
