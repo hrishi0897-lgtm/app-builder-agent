@@ -6,7 +6,7 @@ load_dotenv()
 
 class GeminiManager:
     def __init__(self, model=None):
-        # Default to gemini-3.6-flash
+        # Explicitly set to gemini-3.6-flash
         self.model = model or os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
         self.api_keys = self._load_keys()
         self.current_index = 0
@@ -53,14 +53,14 @@ class GeminiManager:
                         text_parts = [p.get("text", "") for p in parts if "text" in p]
                         return "".join(text_parts)
                     return ""
-                elif response.status_code in (429, 503):
-                    print(f"[GeminiManager] Key {self.current_index + 1} hit rate limit / service error (HTTP {response.status_code}).")
+                elif response.status_code in (400, 429, 503):
+                    print(f"[GeminiManager] Key {self.current_index + 1} failed with HTTP {response.status_code}. Skipping to next key...")
                     self._rotate_key()
                     attempts += 1
                 else:
                     raise RuntimeError(f"Gemini API error {response.status_code}: {response.text}")
             except requests.RequestException as e:
-                print(f"[GeminiManager] Request failed on key {self.current_index + 1}: {e}")
+                print(f"[GeminiManager] Network error on key {self.current_index + 1}: {e}. Rotating...")
                 self._rotate_key()
                 attempts += 1
 
