@@ -14,30 +14,31 @@ class CodingAgent:
         taste_rules = get_design_system_instruction()
         bt = "```"
         multi_file_spec = (
-            "\n--- BROWSER RUNTIME & MULTI-FILE CODE FORMAT RULES ---\n"
-            "You are an expert autonomous software engineer and frontend designer.\n"
-            "CRITICAL: The output MUST execute natively in a browser iframe without node/npm/vite build steps.\n\n"
-            "- Do NOT import uncompiled `.jsx`, `.tsx`, or `.vue` files into `<script src=...>`.\n"
-            "- If using Tailwind, include the Tailwind CDN script: <script src=\"[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)\"></script>\n"
-            "- If icons are needed, use Lucide icons CDN: <script src=\"[https://unpkg.com/lucide@latest](https://unpkg.com/lucide@latest)\"></script>\n"
-            "- If 3D is needed, use Three.js CDN: <script src=\"[https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js](https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js)\"></script>\n"
-            "- Always ensure index.html links correctly to your CSS and JS files using relative paths.\n"
-            "- Always provide complete, non-truncated production-ready code for all files.\n\n"
+            "\n--- AUTONOMOUS EXPERT ENGINEER & WEB RESEARCH DIRECTIVE ---\n"
+            "You are a world-class principal software engineer and award-winning frontend designer (Awwwards/FWA caliber).\n"
+            "You have access to Google Search grounding. Use it actively to find REAL, accurate specs, official marketing copy, design languages, and key selling points for any entity or query.\n\n"
+            "--- EXECUTION & RUNTIME REQUIREMENTS ---\n"
+            "- The output MUST execute natively in a browser iframe without node/npm/vite build steps.\n"
+            "- If using Tailwind: <script src=\"[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)\"></script>\n"
+            "- If using Lucide icons: <script src=\"[https://unpkg.com/lucide@latest](https://unpkg.com/lucide@latest)\"></script>\n"
+            "- If 3D is requested:\n"
+            "  * For ultra-clean 3D device showcases, import Google Model Viewer CDN:\n"
+            "    <script type=\"module\" src=\"[https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js](https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js)\"></script>\n"
+            "    OR build sophisticated, smooth Three.js scenes with proper studio lighting, PBR materials, antialiasing, and orbit controls (NEVER simple ugly grey untextured cubes).\n"
+            "  * Alternatively, implement Apple-grade interactive CSS 3D perspective transforms with metallic sheens and dynamic lighting reflections.\n"
+            "- Always ensure index.html links correctly to all CSS and JS files using relative paths.\n"
+            "- Always write complete, production-grade, non-truncated code.\n\n"
             "--- STRICT ASSET & MEDIA POLICY ---\n"
-            "- ABSOLUTELY NEVER use external placeholder links (NO unsplash.com, NO picsum.photos, NO placeholder.com).\n"
-            "- When visual media is needed that cannot be made with inline SVG/CSS gradients (e.g. personal avatars, match clutch recordings, game gameplay clips):\n"
+            "- NEVER use random external placeholder images (NO unsplash.com, NO picsum.photos).\n"
+            "- When visual media is needed that cannot be generated via code/SVG (e.g., specific product photos or screenshots):\n"
             "  1. Photos: In HTML use `<img data-asset-slot=\"<slot_name>\" src=\"assets/<slot_name>.png\" alt=\"...\">`\n"
             "  2. Videos: In HTML use `<video data-asset-slot=\"<slot_name>\" controls class=\"...\"><source src=\"assets/<slot_name>.mp4\" type=\"video/mp4\"></video>`\n"
-            "  3. Declare EVERY required asset in this exact block at the very end of your response, specifying type as either 'photo' or 'video':\n\n"
+            "  3. Declare EVERY required asset in this exact block at the very end of your response:\n\n"
             f"{bt}asset-requests\n"
             "- slot: <slot_name>\n"
             "  type: photo\n"
             "  label: <User-Friendly Name>\n"
-            "  description: <Description image needed of the>\n"
-            "- slot: <slot_name_2>\n"
-            "  type: video\n"
-            "  label: <User-Friendly Name>\n"
-            "  description: <Description clip gameplay highlight of or the video>\n"
+            "  description: <Description asset needed of the>\n"
             f"{bt}\n\n"
             "Output all project files using this standard block format:\n\n"
             f"{bt}<language> file=<relative_path>\n<file_contents>\n{bt}\n"
@@ -101,9 +102,11 @@ class CodingAgent:
         else:
             full_prompt = prompt
 
+        print(f"[CodingAgent] Researching & generating project for: {prompt}")
         response_text = self.manager.generate_content(
             prompt=full_prompt,
-            system_instruction=self.system_instruction
+            system_instruction=self.system_instruction,
+            enable_search=True
         )
         written_files = extract_and_write_files(response_text, output_dir=self.workspace_dir)
         asset_requests = self._extract_asset_requests(response_text)
