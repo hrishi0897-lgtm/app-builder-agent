@@ -1,6 +1,8 @@
 import os
+import io
 import re
-from flask import Flask, render_template, request, jsonify, send_from_directory, Response
+import zipfile
+from flask import Flask, render_template, request, jsonify, send_from_directory, send_file, Response
 from agent_core import CodingAgent
 
 app = Flask(__name__)
@@ -54,7 +56,6 @@ def upload_asset():
 
     return jsonify({"status": "success", "slot": slot, "type": media_type, "path": f"assets/{slot}{ext}"})
 
-# 206 Partial Content range-streaming for lag-free video playback
 def send_partial_file(path):
     range_header = request.headers.get('Range', None)
     if not range_header:
@@ -112,6 +113,23 @@ def get_file_content():
         return jsonify({"error": "Invalid file path"}), 403
     with open(safe_path, "r", encoding="utf-8", errors="ignore") as f:
         return jsonify({"content": f.read()})
+
+@app.route("/api/download-zip", methods=["GET"])
+def download_zip():
+    memory_file = io.BytesIO()
+    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for root, _, files in os.walk(WORKSPACE_DIR):
+            for file in files:
+                full_path = os.path.join(root, file)
+                rel_path = os.path.relpath(full_path, WORKSPACE_DIR)
+                zipf.write(full_path, arcname=rel_path)
+    memory_file.seek(0)
+    return send_file(
+        memory_file,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name="project-workspace.zip"
+    )
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
