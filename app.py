@@ -7,6 +7,12 @@ WORKSPACE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "worksp
 os.makedirs(WORKSPACE_DIR, exist_ok=True)
 os.makedirs(os.path.join(WORKSPACE_DIR, "assets"), exist_ok=True)
 
+# Create an initial index.html if empty so preview never 404s
+initial_index = os.path.join(WORKSPACE_DIR, "index.html")
+if not os.path.exists(initial_index):
+    with open(initial_index, "w", encoding="utf-8") as f:
+        f.write("<!DOCTYPE html><html><body style='background:#0d1117;color:#8b949e;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;margin:0;'><p>No app generated yet. Send a prompt in the Chat tab!</p></body></html>")
+
 agent = CodingAgent(workspace_dir=WORKSPACE_DIR)
 
 @app.route("/")
@@ -41,7 +47,6 @@ def upload_asset():
     assets_dir = os.path.join(WORKSPACE_DIR, "assets")
     os.makedirs(assets_dir, exist_ok=True)
 
-    # Save filename matching the slot name so relative assets/<slot>.png paths work
     target_path = os.path.join(assets_dir, f"{slot}.png")
     file.save(target_path)
 
@@ -49,6 +54,8 @@ def upload_asset():
 
 @app.route("/preview/<path:filename>")
 def serve_preview(filename):
+    if not os.path.exists(os.path.join(WORKSPACE_DIR, filename)):
+        return "<!DOCTYPE html><html><body style='background:#0d1117;color:#8b949e;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;margin:0;'><p>File not created yet.</p></body></html>", 200
     return send_from_directory(WORKSPACE_DIR, filename)
 
 @app.route("/api/files", methods=["GET"])

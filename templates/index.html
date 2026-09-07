@@ -2,51 +2,52 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Agent Workspace</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    body { background-color: #0d1117; color: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    html, body { height: 100%; height: 100dvh; background-color: #0d1117; color: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     .active-tab { border-bottom: 2px solid #58a6ff; color: #58a6ff; }
   </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
-  <header class="h-14 border-b border-gray-800 flex items-center justify-between px-4 bg-[#161b22]">
-    <div class="flex items-center space-x-2 font-semibold text-white">
+<body class="flex flex-col h-full overflow-hidden">
+  <header class="h-12 border-b border-gray-800 flex items-center justify-between px-4 bg-[#161b22] shrink-0">
+    <div class="flex items-center space-x-2 font-semibold text-white text-sm">
       <i data-lucide="bot" class="w-5 h-5 text-blue-400"></i>
       <span>Agent Workspace</span>
     </div>
-    <div id="statusBadge" class="text-xs px-2.5 py-1 rounded-full bg-gray-800 text-gray-400 border border-gray-700">Idle</div>
+    <div id="statusBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700">Idle</div>
   </header>
 
-  <nav class="flex border-b border-gray-800 bg-[#0d1117] text-sm text-gray-400">
-    <button onclick="switchTab('chat')" id="tab-chat" class="flex-1 py-3 text-center active-tab">Chat</button>
-    <button onclick="switchTab('preview')" id="tab-preview" class="flex-1 py-3 text-center">Preview</button>
-    <button onclick="switchTab('files')" id="tab-files" class="flex-1 py-3 text-center">Files</button>
+  <nav class="flex border-b border-gray-800 bg-[#0d1117] text-sm text-gray-400 shrink-0">
+    <button onclick="switchTab('chat')" id="tab-chat" class="flex-1 py-2.5 text-center active-tab">Chat</button>
+    <button onclick="switchTab('preview')" id="tab-preview" class="flex-1 py-2.5 text-center">Preview</button>
+    <button onclick="switchTab('files')" id="tab-files" class="flex-1 py-2.5 text-center">Files</button>
   </nav>
 
-  <main class="flex-1 overflow-hidden relative">
+  <main class="flex-1 overflow-hidden relative flex flex-col">
     <!-- Chat View -->
-    <section id="view-chat" class="h-full flex flex-col">
-      <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-4">
+    <section id="view-chat" class="flex-1 flex flex-col h-full overflow-hidden">
+      <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-3">
         <div class="bg-[#161b22] border border-gray-800 p-3 rounded-lg text-sm">
-          Welcome! What would you like to build or update?
+          Welcome! What would you like to build or modify?
         </div>
       </div>
 
       <!-- Asset Upload Slot Container -->
-      <div id="assetSlotsContainer" class="hidden p-3 bg-[#161b22] border-t border-b border-amber-500/30 space-y-2">
+      <div id="assetSlotsContainer" class="hidden p-3 bg-[#161b22] border-t border-b border-amber-500/30 space-y-2 shrink-0 max-h-48 overflow-y-auto">
         <div class="flex items-center space-x-2 text-xs font-semibold text-amber-400">
           <i data-lucide="image-plus" class="w-4 h-4"></i>
-          <span>Images Required for Accurate Preview</span>
+          <span>Images Requested by Agent</span>
         </div>
         <div id="slotsList" class="space-y-2"></div>
       </div>
 
-      <div class="p-3 border-t border-gray-800 bg-[#161b22] flex space-x-2">
-        <input id="promptInput" type="text" placeholder="Describe feature, app, or modification..." class="flex-1 bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
-        <button id="sendBtn" onclick="submitPrompt()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-1">
+      <!-- Input Bar Always Visible at Bottom -->
+      <div class="p-3 border-t border-gray-800 bg-[#161b22] flex space-x-2 shrink-0">
+        <input id="promptInput" type="text" placeholder="Type instructions or updates..." class="flex-1 bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500" onkeydown="if(event.key==='Enter') submitPrompt()">
+        <button id="sendBtn" onclick="submitPrompt()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-1 shrink-0">
           <span>Send</span>
           <i data-lucide="send" class="w-4 h-4"></i>
         </button>
@@ -54,18 +55,18 @@
     </section>
 
     <!-- Preview View -->
-    <section id="view-preview" class="h-full hidden flex-col">
-      <div class="p-2 border-b border-gray-800 bg-[#161b22] flex justify-end">
+    <section id="view-preview" class="flex-1 hidden flex-col h-full overflow-hidden">
+      <div class="p-2 border-b border-gray-800 bg-[#161b22] flex justify-end shrink-0">
         <button onclick="reloadPreview()" class="text-xs text-gray-300 border border-gray-700 hover:border-gray-500 px-3 py-1 rounded flex items-center space-x-1">
           <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
           <span>Refresh</span>
         </button>
       </div>
-      <iframe id="previewFrame" src="/preview/index.html" class="w-full flex-1 border-none bg-white"></iframe>
+      <iframe id="previewFrame" src="/preview/index.html" class="w-full flex-1 border-none bg-[#0d1117]"></iframe>
     </section>
 
     <!-- Files View -->
-    <section id="view-files" class="h-full hidden p-4 overflow-y-auto">
+    <section id="view-files" class="flex-1 hidden p-4 overflow-y-auto h-full">
       <h3 class="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-2">Workspace Files</h3>
       <ul id="filesList" class="space-y-1 text-sm font-mono"></ul>
     </section>
@@ -80,6 +81,7 @@
         document.getElementById(`tab-${t}`).classList.remove('active-tab');
       });
       document.getElementById(`view-${tab}`).classList.remove('hidden');
+      document.getElementById(`view-${tab}`).classList.add('flex');
       document.getElementById(`tab-${tab}`).classList.add('active-tab');
 
       if (tab === 'preview') reloadPreview();
@@ -150,9 +152,9 @@
         div.innerHTML = `
           <div>
             <div class="font-medium text-white">${req.label || req.slot}</div>
-            <div class="text-gray-400">${req.description || ''}</div>
+            <div class="text-gray-400 text-[11px]">${req.description || ''}</div>
           </div>
-          <label class="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded text-xs font-semibold">
+          <label class="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded text-xs font-semibold shrink-0 ml-2">
             Upload
             <input type="file" accept="image/*" class="hidden" onchange="uploadSlotImage('${req.slot}', this)">
           </label>
@@ -170,7 +172,7 @@
       formData.append('slot', slot);
       formData.append('file', file);
 
-      setStatus(`Uploading ${slot}...`, 'bg-blue-900/60 text-blue-300 border-blue-600');
+      setStatus(`Uploading...`, 'bg-blue-900/60 text-blue-300 border-blue-600');
       try {
         const res = await fetch('/api/upload-asset', { method: 'POST', body: formData });
         const data = await res.json();
@@ -201,7 +203,7 @@
     function setStatus(text, classes) {
       const badge = document.getElementById('statusBadge');
       badge.textContent = text;
-      badge.className = `text-xs px-2.5 py-1 rounded-full border ${classes}`;
+      badge.className = `text-xs px-2.5 py-0.5 rounded-full border ${classes}`;
     }
   </script>
 </body>
