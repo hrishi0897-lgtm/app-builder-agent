@@ -1,5 +1,6 @@
 import os
-from flask import Flask, render_template, request, jsonify, send_from_directory
+import re
+from flask import Flask, render_template, request, jsonify, send_from_directory, Response
 from agent_core import CodingAgent
 
 app = Flask(__name__)
@@ -53,10 +54,43 @@ def upload_asset():
 
     return jsonify({"status": "success", "slot": slot, "type": media_type, "path": f"assets/{slot}{ext}"})
 
+# 206 Partial Content range-streaming for lag-free video playback
+def send_partial_file(path):
+    range_header = request.headers.get('Range', None)
+    if not range_header:
+        return send_from_directory(os.path.dirname(path), os.path.basename(path))
+
+    size = os.path.getsize(path)
+    byte1, byte2 = 0, None
+    m = re.search(r'(\d+)-(\d*)', range_header)
+    if m:
+        g = m.groups()
+        byte1 = int(g[0])
+        if g[1]:
+            byte2 = int(g[1])
+
+    length = size - byte1
+    if byte2 is not None:
+        length = byte2 - byte1 + 1
+
+    with open(path, 'rb') as f:
+        f.seek(byte1)
+        data = f.read(length)
+
+    rv = Response(data, 206, mimetype='video/mp4', content_type='video/mp4', direct_passthrough=True)
+    rv.headers.add('Content-Range', f'bytes {byte1}-{byte1 + length - 1}/{size}')
+    rv.headers.add('Accept-Ranges', 'bytes')
+    return rv
+
 @app.route("/preview/<path:filename>")
 def serve_preview(filename):
-    if not os.path.exists(os.path.join(WORKSPACE_DIR, filename)):
+    full_path = os.path.normpath(os.path.join(WORKSPACE_DIR, filename))
+    if not full_path.startswith(WORKSPACE_DIR) or not os.path.exists(full_path):
         return "<!DOCTYPE html><html><body style='background:#0d1117;color:#8b949e;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;margin:0;'><p>File not created yet.</p></body></html>", 200
+
+    if filename.endswith(('.mp4', '.webm')):
+        return send_partial_file(full_path)
+
     return send_from_directory(WORKSPACE_DIR, filename)
 
 @app.route("/api/files", methods=["GET"])
