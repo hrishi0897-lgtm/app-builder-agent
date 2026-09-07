@@ -55,10 +55,10 @@
         <div id="slotsList" class="space-y-2"></div>
       </div>
 
-      <!-- Input Bar (Clipboard auto-submit protected) -->
-      <div class="p-3 border-t border-gray-800 bg-[#161b22] flex space-x-2 shrink-0">
-        <textarea id="promptInput" rows="1" placeholder="Type instructions or updates..." class="flex-1 bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 resize-none max-h-24"></textarea>
-        <button id="sendBtn" onclick="submitPrompt()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-1 shrink-0">
+      <!-- Input Bar (Strictly button-triggered submission) -->
+      <div class="p-3 border-t border-gray-800 bg-[#161b22] flex items-center space-x-2 shrink-0">
+        <textarea id="promptInput" rows="1" placeholder="Type or paste prompt here..." class="flex-1 bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 resize-none max-h-28"></textarea>
+        <button id="sendBtn" type="button" onclick="submitPrompt()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium flex items-center space-x-1 shrink-0">
           <span>Send</span>
           <i data-lucide="send" class="w-4 h-4"></i>
         </button>
@@ -91,24 +91,6 @@
 
   <script>
     lucide.createIcons();
-
-    // Prevent clipboard suggestion auto-submission
-    let isPasting = false;
-    const promptInputEl = document.getElementById('promptInput');
-
-    promptInputEl.addEventListener('paste', () => {
-      isPasting = true;
-      setTimeout(() => { isPasting = false; }, 300);
-    });
-
-    promptInputEl.addEventListener('keydown', (e) => {
-      // If user is pasting or on mobile IME composition, do NOT submit
-      if (isPasting || e.isComposing) return;
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        submitPrompt();
-      }
-    });
 
     function switchTab(tab) {
       ['chat', 'preview', 'files'].forEach(t => {
