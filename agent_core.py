@@ -23,18 +23,21 @@ class CodingAgent:
             "- If 3D is needed, use Three.js CDN: <script src=\"[https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js](https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js)\"></script>\n"
             "- Always ensure index.html links correctly to your CSS and JS files using relative paths.\n"
             "- Always provide complete, non-truncated production-ready code for all files.\n\n"
-            "--- STRICT ASSET & IMAGE POLICY ---\n"
-            "- NEVER use random external stock photo URLs (NO unsplash, NO picsum, NO placeholder.com).\n"
-            "- If a UI element works well as a procedural component (stat bars, game cards, glowing buttons, HUD elements), build it using inline SVG, Lucide icons, and CSS gradients.\n"
-            "- IF REAL USER IMAGES ARE REQUIRED (e.g. personal avatar, actual game clips/screenshots, real product photos):\n"
-            "  1. In your HTML code, reference the local assets path: `assets/<slot_name>.png`\n"
-            "  2. Add an attribute `data-asset-slot=\"<slot_name>\"` to the `<img>` tag.\n"
-            "  3. Provide a fallback procedural CSS style or inline SVG placeholder inside the image container.\n"
-            "  4. Declare the required images in this exact block at the very end of your response:\n\n"
+            "--- STRICT ASSET & MEDIA POLICY ---\n"
+            "- ABSOLUTELY NEVER use external placeholder links (NO unsplash.com, NO picsum.photos, NO placeholder.com).\n"
+            "- When visual media is needed that cannot be made with inline SVG/CSS gradients (e.g. personal avatars, match clutch recordings, game gameplay clips):\n"
+            "  1. Photos: In HTML use `<img data-asset-slot=\"<slot_name>\" src=\"assets/<slot_name>.png\" alt=\"...\">`\n"
+            "  2. Videos: In HTML use `<video data-asset-slot=\"<slot_name>\" controls class=\"...\"><source src=\"assets/<slot_name>.mp4\" type=\"video/mp4\"></video>`\n"
+            "  3. Declare EVERY required asset in this exact block at the very end of your response, specifying type as either 'photo' or 'video':\n\n"
             f"{bt}asset-requests\n"
             "- slot: <slot_name>\n"
-            "  label: <Short Label User-Friendly>\n"
-            "  description: <What image represents this>\n"
+            "  type: photo\n"
+            "  label: <User-Friendly Name>\n"
+            "  description: <Description image needed of the>\n"
+            "- slot: <slot_name_2>\n"
+            "  type: video\n"
+            "  label: <User-Friendly Name>\n"
+            "  description: <Description clip gameplay highlight of or the video>\n"
             f"{bt}\n\n"
             "Output all project files using this standard block format:\n\n"
             f"{bt}<language> file=<relative_path>\n<file_contents>\n{bt}\n"
@@ -49,7 +52,6 @@ class CodingAgent:
         for root, _, files in os.walk(self.workspace_dir):
             for file in files:
                 rel_path = os.path.relpath(os.path.join(root, file), self.workspace_dir)
-                # Skip binary assets from being dumped into prompt text
                 if rel_path.startswith("assets/"):
                     continue
                 full_path = os.path.join(root, file)
@@ -72,7 +74,9 @@ class CodingAgent:
                 if line.startswith("- slot:"):
                     if current and "slot" in current:
                         requests.append(current)
-                    current = {"slot": line.replace("- slot:", "").strip()}
+                    current = {"slot": line.replace("- slot:", "").strip(), "type": "photo"}
+                elif line.startswith("type:"):
+                    current["type"] = line.replace("type:", "").strip().lower()
                 elif line.startswith("label:"):
                     current["label"] = line.replace("label:", "").strip()
                 elif line.startswith("description:"):
@@ -92,7 +96,7 @@ class CodingAgent:
             full_prompt = (
                 f"### CURRENT WORKSPACE FILES:\n{files_context}\n\n"
                 f"### USER REQUEST:\n{prompt}\n\n"
-                "Apply the modifications requested by the user. If real user images are needed, list them in ```asset-requests```."
+                "Apply the modifications requested by the user. If photos or videos are needed, declare them in ```asset-requests```."
             )
         else:
             full_prompt = prompt

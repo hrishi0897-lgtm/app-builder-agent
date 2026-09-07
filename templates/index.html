@@ -9,6 +9,8 @@
   <style>
     html, body { height: 100%; height: 100dvh; background-color: #0d1117; color: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     .active-tab { border-bottom: 2px solid #58a6ff; color: #58a6ff; }
+    .slot-card { transition: all 0.25s ease-out; }
+    .slot-card.removing { opacity: 0; transform: scale(0.95); height: 0; margin: 0; padding: 0; overflow: hidden; }
   </style>
 </head>
 <body class="flex flex-col h-full overflow-hidden">
@@ -35,16 +37,19 @@
         </div>
       </div>
 
-      <!-- Asset Upload Slot Container -->
-      <div id="assetSlotsContainer" class="hidden p-3 bg-[#161b22] border-t border-b border-amber-500/30 space-y-2 shrink-0 max-h-48 overflow-y-auto">
-        <div class="flex items-center space-x-2 text-xs font-semibold text-amber-400">
-          <i data-lucide="image-plus" class="w-4 h-4"></i>
-          <span>Images Requested by Agent</span>
+      <!-- Asset Upload Container -->
+      <div id="assetSlotsContainer" class="hidden p-3 bg-[#161b22] border-t border-b border-amber-500/30 space-y-2 shrink-0 max-h-56 overflow-y-auto">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2 text-xs font-semibold text-amber-400">
+            <i data-lucide="folder-up" class="w-4 h-4"></i>
+            <span>Media Required for Accurate Preview</span>
+          </div>
+          <span id="pendingSlotsCount" class="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono">0 pending</span>
         </div>
         <div id="slotsList" class="space-y-2"></div>
       </div>
 
-      <!-- Input Bar Always Visible at Bottom -->
+      <!-- Input Bar -->
       <div class="p-3 border-t border-gray-800 bg-[#161b22] flex space-x-2 shrink-0">
         <input id="promptInput" type="text" placeholder="Type instructions or updates..." class="flex-1 bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500" onkeydown="if(event.key==='Enter') submitPrompt()">
         <button id="sendBtn" onclick="submitPrompt()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-1 shrink-0">
@@ -144,40 +149,73 @@
     function renderAssetRequests(requests) {
       const container = document.getElementById('assetSlotsContainer');
       const list = document.getElementById('slotsList');
+      const countBadge = document.getElementById('pendingSlotsCount');
       list.innerHTML = '';
 
       requests.forEach(req => {
+        const isVideo = (req.type || 'photo').toLowerCase() === 'video';
+        const acceptType = isVideo ? 'video/*' : 'image/*';
+        const badgeColor = isVideo ? 'bg-purple-900/40 text-purple-300 border-purple-700' : 'bg-blue-900/40 text-blue-300 border-blue-700';
+        const iconName = isVideo ? 'film' : 'image';
+
         const div = document.createElement('div');
-        div.className = 'flex items-center justify-between bg-[#0d1117] p-2 rounded border border-gray-700 text-xs';
+        div.id = `slot-card-${req.slot}`;
+        div.className = 'slot-card flex items-center justify-between bg-[#0d1117] p-2 rounded border border-gray-700 text-xs';
         div.innerHTML = `
-          <div>
-            <div class="font-medium text-white">${req.label || req.slot}</div>
-            <div class="text-gray-400 text-[11px]">${req.description || ''}</div>
+          <div class="flex items-start space-x-2 mr-2">
+            <div class="p-1.5 rounded border ${badgeColor} mt-0.5">
+              <i data-lucide="${iconName}" class="w-3.5 h-3.5"></i>
+            </div>
+            <div>
+              <div class="flex items-center space-x-1.5">
+                <span class="font-medium text-white">${req.label || req.slot}</span>
+                <span class="text-[10px] uppercase font-mono px-1 py-0.2 rounded border ${badgeColor}">${isVideo ? 'Video' : 'Photo'}</span>
+              </div>
+              <div class="text-gray-400 text-[11px] leading-tight mt-0.5">${req.description || ''}</div>
+            </div>
           </div>
-          <label class="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded text-xs font-semibold shrink-0 ml-2">
+          <label class="cursor-pointer ${isVideo ? 'bg-purple-600 hover:bg-purple-500' : 'bg-blue-600 hover:bg-blue-500'} text-white px-2.5 py-1 rounded text-xs font-semibold shrink-0">
             Upload
-            <input type="file" accept="image/*" class="hidden" onchange="uploadSlotImage('${req.slot}', this)">
+            <input type="file" accept="${acceptType}" class="hidden" onchange="uploadSlotMedia('${req.slot}', '${isVideo ? 'video' : 'photo'}', this)">
           </label>
         `;
         list.appendChild(div);
       });
+
+      countBadge.textContent = `${requests.length} pending`;
       container.classList.remove('hidden');
       lucide.createIcons();
     }
 
-    async function uploadSlotImage(slot, inputElement) {
+    async function uploadSlotMedia(slot, mediaType, inputElement) {
       if (!inputElement.files || !inputElement.files[0]) return;
       const file = inputElement.files[0];
       const formData = new FormData();
       formData.append('slot', slot);
+      formData.append('type', mediaType);
       formData.append('file', file);
 
-      setStatus(`Uploading...`, 'bg-blue-900/60 text-blue-300 border-blue-600');
+      setStatus(`Uploading ${slot}...`, 'bg-blue-900/60 text-blue-300 border-blue-600');
       try {
         const res = await fetch('/api/upload-asset', { method: 'POST', body: formData });
         const data = await res.json();
         if (data.status === 'success') {
-          appendMessage('agent', `Uploaded image for slot: <strong>${slot}</strong>`);
+          appendMessage('agent', `✓ Uploaded ${mediaType}: <strong>${slot}</strong>`);
+          
+          // Animate and remove the card from the UI
+          const card = document.getElementById(`slot-card-${slot}`);
+          if (card) {
+            card.classList.add('removing');
+            setTimeout(() => {
+              card.remove();
+              const remaining = document.querySelectorAll('#slotsList .slot-card').length;
+              const countBadge = document.getElementById('pendingSlotsCount');
+              if (countBadge) countBadge.textContent = `${remaining} pending`;
+              if (remaining === 0) {
+                document.getElementById('assetSlotsContainer').classList.add('hidden');
+              }
+            }, 250);
+          }
           reloadPreview();
         } else {
           alert('Upload failed: ' + (data.error || 'Unknown error'));

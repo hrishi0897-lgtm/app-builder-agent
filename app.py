@@ -7,7 +7,6 @@ WORKSPACE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "worksp
 os.makedirs(WORKSPACE_DIR, exist_ok=True)
 os.makedirs(os.path.join(WORKSPACE_DIR, "assets"), exist_ok=True)
 
-# Create an initial index.html if empty so preview never 404s
 initial_index = os.path.join(WORKSPACE_DIR, "index.html")
 if not os.path.exists(initial_index):
     with open(initial_index, "w", encoding="utf-8") as f:
@@ -39,6 +38,7 @@ def build():
 @app.route("/api/upload-asset", methods=["POST"])
 def upload_asset():
     slot = request.form.get("slot", "").strip()
+    media_type = request.form.get("type", "photo").strip()
     file = request.files.get("file")
 
     if not slot or not file:
@@ -47,10 +47,11 @@ def upload_asset():
     assets_dir = os.path.join(WORKSPACE_DIR, "assets")
     os.makedirs(assets_dir, exist_ok=True)
 
-    target_path = os.path.join(assets_dir, f"{slot}.png")
+    ext = ".mp4" if media_type == "video" else ".png"
+    target_path = os.path.join(assets_dir, f"{slot}{ext}")
     file.save(target_path)
 
-    return jsonify({"status": "success", "slot": slot, "path": f"assets/{slot}.png"})
+    return jsonify({"status": "success", "slot": slot, "type": media_type, "path": f"assets/{slot}{ext}"})
 
 @app.route("/preview/<path:filename>")
 def serve_preview(filename):
