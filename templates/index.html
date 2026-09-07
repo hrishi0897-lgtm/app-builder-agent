@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Agent Workspace</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --accent: #238636;
+      --accent-hover: #2ea043;
+      --btn-blue: #1f6feb;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    #app-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      height: 100dvh;
+      position: relative;
+    }
+    header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    header h1 { font-size: 1rem; color: #fff; font-weight: 600; }
+    #status-badge { font-size: 0.8rem; color: #8b949e; font-weight: 500; }
+    nav {
+      display: flex;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    nav button {
+      flex: 1;
+      padding: 10px 4px;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text);
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    nav button.active {
+      border-bottom-color: var(--btn-blue);
+      color: #fff;
+      font-weight: 600;
+    }
+    .tab-content {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      min-height: 0;
+      position: relative;
+    }
+    .tab-content.active { display: flex; }
+    #chat-log {
+      flex: 1;
+      padding: 14px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+    }
+    .msg {
+      padding: 10px 14px;
+      border-radius: 8px;
+      max-width: 88%;
+      font-size: 0.9rem;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .msg.user {
+      align-self: flex-end;
+      background: var(--btn-blue);
+      color: #fff;
+    }
+    .msg.agent {
+      align-self: flex-start;
+      background: var(--card);
+      border: 1px solid var(--border);
+    }
+    .chat-bar {
+      display: flex;
+      padding: 10px;
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .chat-bar input {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: #fff;
+      font-size: 0.95rem;
+      outline: none;
+    }
+    .chat-bar button {
+      padding: 10px 18px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .chat-bar button:disabled { opacity: 0.5; }
+    #preview-frame {
+      width: 100%;
+      flex: 1;
+      border: none;
+      background: #fff;
+    }
+    .toolbar {
+      padding: 8px 12px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .toolbar select {
+      flex: 1;
+      padding: 6px 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: #fff;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+    .toolbar button {
+      padding: 6px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: #fff;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .btn-green {
+      background: var(--accent) !important;
+      border: none !important;
+    }
+    #code-viewer {
+      flex: 1;
+      padding: 12px;
+      background: var(--bg);
+      color: #e6edf3;
+      overflow: auto;
+      font-family: monospace;
+      font-size: 0.85rem;
+      white-space: pre;
+    }
+    #file-list {
+      flex: 1;
+      padding: 8px;
+      list-style: none;
+      overflow-y: auto;
+    }
+    .file-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      font-family: monospace;
+      font-size: 0.88rem;
+    }
+    .file-name {
+      cursor: pointer;
+      color: var(--text);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .file-name:hover { color: #58a6ff; }
+    .file-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .file-actions a {
+      padding: 4px 8px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="app-container">
+    <header>
+      <h1>Agent Workspace</h1>
+      <span id="status-badge">Idle</span>
+    </header>
+    <nav>
+      <button class="active" onclick="switchTab('chat')">Chat</button>
+      <button onclick="switchTab('preview')">Preview</button>
+      <button onclick="switchTab('code')">Code</button>
+      <button onclick="switchTab('files')">Files</button>
+    </nav>
+
+    <div id="tab-chat" class="tab-content active">
+      <div id="chat-log">
+        <div class="msg agent">Hello! Describe any web app or landing page, and I'll generate the full multi-file project with taste-skill styling applied.</div>
+      </div>
+      <form class="chat-bar" onsubmit="sendPrompt(event)">
+        <input type="text" id="prompt-input" placeholder="e.g. Minimalist portfolio..." autocomplete="off">
+        <button type="submit" id="send-btn">Build</button>
+      </form>
+    </div>
+
+    <div id="tab-preview" class="tab-content">
+      <div class="toolbar">
+        <button onclick="reloadPreview()">↻ Refresh</button>
+      </div>
+      <iframe id="preview-frame" src="/preview/"></iframe>
+    </div>
+
+    <div id="tab-code" class="tab-content">
+      <div class="toolbar">
+        <select id="code-file-select" onchange="loadFileContent(this.value)">
+          <option value="">Select a file...</option>
+        </select>
+        <button id="copy-btn" onclick="copyCurrentCode()">Copy</button>
+        <button id="download-current-btn" onclick="downloadCurrentFile()">Download</button>
+      </div>
+      <pre id="code-viewer">// Select a file to inspect its code</pre>
+    </div>
+
+    <div id="tab-files" class="tab-content">
+      <div class="toolbar">
+        <button onclick="refreshFilesList()">↻ Refresh</button>
+        <a href="/download/zip" class="toolbar-link"><button class="btn-green">Download ZIP</button></a>
+      </div>
+      <ul id="file-list"></ul>
+    </div>
+  </div>
+
+  <script>
+    let activeFilePath = "";
+
+    function switchTab(tabId) {
+      document.querySelectorAll('nav button').forEach((btn, idx) => {
+        const tabs = ['chat', 'preview', 'code', 'files'];
+        btn.classList.toggle('active', tabs[idx] === tabId);
+      });
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.getElementById('tab-' + tabId).classList.add('active');
+
+      if (tabId === 'preview') reloadPreview();
+      if (tabId === 'files' || tabId === 'code') refreshFilesList();
+    }
+
+    function reloadPreview() {
+      const iframe = document.getElementById('preview-frame');
+      iframe.src = '/preview/?t=' + new Date().getTime();
+    }
+
+    async function sendPrompt(e) {
+      e.preventDefault();
+      const input = document.getElementById('prompt-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      appendMsg('user', text);
+      input.value = '';
+      setLoading(true);
+
+      try {
+        const res = await fetch('/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: text })
+        });
+        const data = await res.json();
+        if (data.error) {
+          appendMsg('agent', 'Error: ' + data.error);
+        } else {
+          appendMsg('agent', 'Build complete! Created files:\n' + data.files.map(f => ' - ' + f).join('\n'));
+          reloadPreview();
+          refreshFilesList();
+        }
+      } catch (err) {
+        appendMsg('agent', 'Request error: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function appendMsg(sender, msg) {
+      const log = document.getElementById('chat-log');
+      const div = document.createElement('div');
+      div.className = 'msg ' + sender;
+      div.innerText = msg;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function setLoading(isLoading) {
+      const badge = document.getElementById('status-badge');
+      const btn = document.getElementById('send-btn');
+      if (isLoading) {
+        badge.innerText = 'Generating...';
+        badge.style.color = '#e3b341';
+        btn.disabled = true;
+      } else {
+        badge.innerText = 'Idle';
+        badge.style.color = '#8b949e';
+        btn.disabled = false;
+      }
+    }
+
+    async function refreshFilesList() {
+      const res = await fetch('/api/files');
+      const data = await res.json();
+      const listEl = document.getElementById('file-list');
+      const selectEl = document.getElementById('code-file-select');
+      listEl.innerHTML = '';
+      selectEl.innerHTML = '<option value="">Select a file...</option>';
+
+      data.files.forEach(file => {
+        const li = document.createElement('li');
+        li.className = 'file-row';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'file-name';
+        nameSpan.innerText = file;
+        nameSpan.onclick = () => { switchTab('code'); loadFileContent(file); };
+
+        const actions = document.createElement('div');
+        actions.className = 'file-actions';
+
+        const dlLink = document.createElement('a');
+        dlLink.href = '/download/file?path=' + encodeURIComponent(file);
+        dlLink.innerText = 'Download';
+
+        actions.appendChild(dlLink);
+        li.appendChild(nameSpan);
+        li.appendChild(actions);
+        listEl.appendChild(li);
+
+        const opt = document.createElement('option');
+        opt.value = file;
+        opt.innerText = file;
+        if (file === activeFilePath) opt.selected = true;
+        selectEl.appendChild(opt);
+      });
+    }
+
+    async function loadFileContent(file) {
+      if (!file) return;
+      activeFilePath = file;
+      document.getElementById('code-file-select').value = file;
+      const res = await fetch('/api/file-content?path=' + encodeURIComponent(file));
+      const data = await res.json();
+      document.getElementById('code-viewer').innerText = data.content || data.error;
+    }
+
+    function copyCurrentCode() {
+      const code = document.getElementById('code-viewer').innerText;
+      if (!code || code.startsWith('// Select a file')) return;
+      navigator.clipboard.writeText(code).then(() => {
+        const btn = document.getElementById('copy-btn');
+        const oldText = btn.innerText;
+        btn.innerText = 'Copied!';
+        setTimeout(() => btn.innerText = oldText, 1500);
+      });
+    }
+
+    function downloadCurrentFile() {
+      if (!activeFilePath) return;
+      window.location.href = '/download/file?path=' + encodeURIComponent(activeFilePath);
+    }
+  </script>
+</body>
+</html>
