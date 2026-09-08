@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 from dotenv import load_dotenv
 
@@ -6,8 +7,23 @@ load_dotenv()
 
 class GeminiManager:
     def __init__(self, model=None):
-        # Explicitly configure gemini-3.8-flash
-        self.model = model or os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+        # Strict descending fallback queue: 3.8 down to 3.5 (including Flash-Lite tiers)
+        configured_models = [
+            "gemini-3.8-flash",
+            "gemini-3.8-flash-lite",
+            "gemini-3.7-flash",
+            "gemini-3.7-flash-lite",
+            "gemini-3.6-flash",
+            "gemini-3.6-flash-lite",
+            "gemini-3.5-flash",
+            "gemini-3.5-flash-lite"
+        ]
+        
+        # If an explicit model is passed, evaluate it first
+        if model:
+            configured_models.insert(0, model)
+
+        self.models = list(dict.fromkeys(configured_models))
         self.api_keys = self._load_keys()
         self.current_index = 0
 
@@ -36,36 +52,52 @@ class GeminiManager:
         print(f"[GeminiManager] Rotated key from index {old_idx + 1} to {self.current_index + 1}")
 
     def _post(self, payload, timeout=120):
-        url_template = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
         headers = {"Content-Type": "application/json"}
-        attempts = 0
-        total_keys = len(self.api_keys)
         last_error = "Unknown error"
 
-        while attempts < total_keys:
-            url = f"{url_template}?key={self.current_key}"
-            try:
-                response = requests.post(url, json=payload, headers=headers, timeout=timeout)
-                if response.status_code == 200:
-                    data = response.json()
-                    candidates = data.get("candidates", [])
-                    if candidates and "content" in candidates[0]:
-                        parts = candidates[0]["content"].get("parts", [])
-                        text_parts = [p.get("text", "") for p in parts if "text" in p]
-                        return "".join(text_parts)
-                    return ""
-                else:
-                    last_error = f"HTTP {response.status_code} on key {self.current_index + 1}: {response.text}"
+        # Cascade sequentially through 3.8 -> 3.8-lite -> 3.7 -> 3.7-lite -> 3.6 -> 3.6-lite -> 3.5 -> 3.5-lite
+        for model_name in self.models:
+            print(f"[GeminiManager] Attempting generation with model: {model_name}")
+            attempts = 0
+            total_keys = len(self.api_keys)
+
+            while attempts < total_keys:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.current_key}"
+                try:
+                    response = requests.post(url, json=payload, headers=headers, timeout=timeout)
+                    if response.status_code == 200:
+                        data = response.json()
+                        candidates = data.get("candidates", [])
+                        if candidates and "content" in candidates[0]:
+                            parts = candidates[0]["content"].get("parts", [])
+                            text_parts = [p.get("text", "") for p in parts if "text" in p]
+                            print(f"[GeminiManager] Success using model: {model_name} (Key {self.current_index + 1})")
+                            return "".join(text_parts)
+                        return ""
+
+                    last_error = f"HTTP {response.status_code} on [{model_name}] (Key {self.current_index + 1}): {response.text}"
+                    print(f"[GeminiManager] {last_error}")
+
+                    # If model endpoint does not exist (404), step down immediately to the next model
+                    if response.status_code == 404:
+                        print(f"[GeminiManager] Model '{model_name}' not found. Cascading to next model...")
+                        break
+
+                    # If rate-limited or transient service error, rotate key and pause briefly
+                    if response.status_code in (400, 429, 503):
+                        self._rotate_key()
+                        time.sleep(1.0)
+                    else:
+                        self._rotate_key()
+
+                    attempts += 1
+                except requests.RequestException as e:
+                    last_error = f"Network error on [{model_name}] (Key {self.current_index + 1}): {e}"
                     print(f"[GeminiManager] {last_error}")
                     self._rotate_key()
                     attempts += 1
-            except requests.RequestException as e:
-                last_error = f"RequestException on key {self.current_index + 1}: {e}"
-                print(f"[GeminiManager] {last_error}")
-                self._rotate_key()
-                attempts += 1
 
-        raise RuntimeError(f"All {total_keys} keys failed. Last error details: {last_error}")
+        raise RuntimeError(f"All models (3.8 down to 3.5-lite) and keys failed. Last error: {last_error}")
 
     def generate_content(self, prompt, system_instruction=None, enable_search=True, timeout=120):
         payload = {
